@@ -47,7 +47,7 @@ export function saveQualification(q) {
   }
 }
 
-// 오답노트 · 내 기록: 이 브라우저에만 저장
+// 내 기록: 이 브라우저에만 저장
 function readJson(key, fallback) {
   try {
     return JSON.parse(localStorage.getItem(key)) ?? fallback
@@ -62,10 +62,13 @@ function writeJson(key, value) {
     // 저장이 막힌 브라우저: 이번 화면에서만
   }
 }
-const NOTE_KEY = 'dk-wrong-notes'
 const HISTORY_KEY = 'dk-history'
-export const loadNotes = () => readJson(NOTE_KEY, [])
-export const saveNotes = (notes) => writeJson(NOTE_KEY, notes.slice(0, 100))
+// 오답노트 기능은 11/25 뺐다 → 예전에 저장된 오답노트 데이터는 지운다
+try {
+  localStorage.removeItem('dk-wrong-notes')
+} catch {
+  // 저장소가 막힌 브라우저: 지울 것도 없음
+}
 export const loadHistory = () => readJson(HISTORY_KEY, [])
 export const saveHistory = (list) => writeJson(HISTORY_KEY, list.slice(0, 20))
 

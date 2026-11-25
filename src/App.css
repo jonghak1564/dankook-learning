@@ -133,7 +133,7 @@ body {
   margin: 0;
 }
 
-/* ── 피드 (최근 문제 · 오답노트) ── */
+/* ── 피드 (최근 문제 · 틀린 문제 해설) ── */
 .ev-feed {
   margin: 0;
   padding: 0;
@@ -578,40 +578,6 @@ body {
   text-decoration: underline;
   text-underline-offset: 3px;
   cursor: pointer;
-}
-
-/* ── 분야 목록 ── */
-.mb-list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.mb-list li {
-  border-top: 1px solid var(--ev-line);
-}
-
-.mb-list button {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  width: 100%;
-  min-height: 52px;
-  padding: 0 16px;
-  border: 0;
-  background: none;
-  font: inherit;
-  color: var(--ev-text);
-  cursor: pointer;
-}
-
-.mb-list button:hover:not(:disabled) {
-  background: var(--ev-bg);
-}
-
-.mb-list button:disabled {
-  cursor: default;
-  color: var(--ev-sub);
 }
 
 /* ── 퀴즈: 한 화면에 한 문제 ── */

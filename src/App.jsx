@@ -1,5 +1,5 @@
 // 메인 화면 — 성격 유형 테스트처럼: 시작 → 한 화면에 한 문제 → 결과 카드(등급)
-// 분야별 풀기 · 오답노트 · 문제 올리기는 시작 화면의 작은 링크와 결과 화면 버튼으로 (01 PRD Q5 ①②)
+// 문제 내기는 출제 자격이 있을 때 시작 화면 링크와 결과 화면 버튼으로 (01 PRD Q5 ①②)
 import { useEffect, useState } from 'react'
 import {
   answerApi,
@@ -7,11 +7,9 @@ import {
   fetchQuiz,
   fetchRecent,
   loadHistory,
-  loadNotes,
   loadQualification,
   qualifyApi,
   saveHistory,
-  saveNotes,
   saveQualification,
   submitQuestionApi,
 } from './api.js'
@@ -45,10 +43,9 @@ function scoreOf(round) {
 export default function App() {
   const [meta, setMeta] = useState(null)
   const [recent, setRecent] = useState([])
-  const [screen, setScreen] = useState('start') // start | categories | quiz | result | notes | submit | submitted
+  const [screen, setScreen] = useState('start') // start | quiz | result | submit | submitted
   const [round, setRound] = useState(null) // { level, category, questions, answers, retry }
   const [qual, setQual] = useState(() => loadQualification())
-  const [notes, setNotes] = useState(() => loadNotes())
   const [history, setHistory] = useState(() => loadHistory())
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
@@ -67,7 +64,7 @@ export default function App() {
   async function start(level, category = 'all', questions = null) {
     setError('')
     try {
-      // 다시 풀기 · 오답노트는 이미 정답을 본 문제라 화면에서 채점(local), 새 퀴즈는 서버가 채점
+      // 틀린 것만 다시 풀기는 이미 정답을 본 문제라 화면에서 채점(local), 새 퀴즈는 서버가 채점
       const data = questions ? { sessionId: null, questions } : await fetchQuiz(level, category)
       if (!data.questions.length) {
         setError('아직 공개된 문제가 없어요.')
@@ -86,16 +83,6 @@ export default function App() {
     setRound(done)
     go('result')
     const percent = scoreOf(done)
-
-    // 오답노트: 틀린 문제는 쌓고, 맞힌 문제는 뺀다
-    const wrongIds = new Set(done.questions.filter((q, i) => q.answer !== answers[i]).map((q) => q.id))
-    const rightIds = new Set(done.questions.filter((q, i) => q.answer === answers[i]).map((q) => q.id))
-    const nextNotes = [
-      ...done.questions.filter((q) => wrongIds.has(q.id)).map((q) => ({ ...q, savedAt: new Date().toISOString() })),
-      ...notes.filter((n) => !wrongIds.has(n.id) && !rightIds.has(n.id)),
-    ]
-    setNotes(nextNotes)
-    saveNotes(nextNotes)
 
     // 내 기록 (PRD Q6: 두 번째 풀이 정답률 비교에 쓴다)
     const nextHistory = [
@@ -164,17 +151,12 @@ export default function App() {
           <Start
             meta={meta}
             total={total}
-            notes={notes}
             qual={qual}
             last={history[0]}
             onStart={start}
-            onCategories={() => go('categories')}
-            onNotes={() => go('notes')}
             onSubmit={() => go('submit')}
           />
         )}
-
-        {screen === 'categories' && <Categories meta={meta} onPick={(c) => start('newbie', c)} onBack={() => go('start')} />}
 
         {screen === 'quiz' && round && <Quiz meta={meta} round={round} onFinish={finish} onQuit={() => go('start')} />}
 
@@ -189,19 +171,6 @@ export default function App() {
             onSenior={() => start('senior')}
             onHome={() => go('start')}
             onSubmit={() => go('submit')}
-          />
-        )}
-
-        {screen === 'notes' && (
-          <Notes
-            meta={meta}
-            notes={notes}
-            onRetry={() => start('newbie', 'all', notes)}
-            onBack={() => go('start')}
-            onClear={() => {
-              setNotes([])
-              saveNotes([])
-            }}
           />
         )}
 
@@ -245,7 +214,7 @@ export default function App() {
   )
 }
 
-function Start({ meta, total, notes, qual, last, onStart, onCategories, onNotes, onSubmit }) {
+function Start({ meta, total, qual, last, onStart, onSubmit }) {
   return (
     <section className="mb-start">
       <p className="mb-kicker">단국대 천안캠퍼스 · 단국러닝</p>
@@ -274,46 +243,13 @@ function Start({ meta, total, notes, qual, last, onStart, onCategories, onNotes,
         {last && ` · 내 최근 점수 ${last.percent}점`}
       </p>
 
-      <nav className="mb-links" aria-label="다른 메뉴">
-        <button type="button" onClick={onCategories}>
-          분야별로 풀기
-        </button>
-        <button type="button" onClick={onNotes}>
-          오답노트{notes.length > 0 && ` ${notes.length}`}
-        </button>
-        {qual && (
+      {qual && (
+        <nav className="mb-links" aria-label="다른 메뉴">
           <button type="button" onClick={onSubmit}>
             문제 내기
           </button>
-        )}
-      </nav>
-    </section>
-  )
-}
-
-function Categories({ meta, onPick, onBack }) {
-  const counts = meta.counts.newbie ?? {}
-  return (
-    <section className="ev-card">
-      <div className="ev-card-head">
-        <h1 className="ev-h2">분야별로 풀기</h1>
-        <p className="ev-muted">신·편입생 문제 중 궁금한 분야만</p>
-      </div>
-      <ul className="mb-list">
-        {Object.entries(meta.categories).map(([k, label]) => (
-          <li key={k}>
-            <button type="button" onClick={() => onPick(k)} disabled={!counts[k]}>
-              <span>{label}</span>
-              <span className="ev-muted">{counts[k] ? `${counts[k]}문제` : '준비 중'}</span>
-            </button>
-          </li>
-        ))}
-      </ul>
-      <div className="ev-row ev-pad-x ev-pad-b">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          처음으로
-        </Button>
-      </div>
+        </nav>
+      )}
     </section>
   )
 }
@@ -478,7 +414,6 @@ function Result({ meta, round, qualified, recent, onRetryWrong, onAgain, onSenio
           <div className="ev-card-head ev-card-head-row">
             <div>
               <h2 className="ev-h3">틀린 문제 해설</h2>
-              <p className="ev-muted">오답노트에도 저장했어요.</p>
             </div>
             <Button size="sm" onClick={() => onRetryWrong(wrong)}>
               틀린 것만 다시
@@ -531,34 +466,5 @@ function NoteList({ meta, items }) {
         </li>
       ))}
     </ul>
-  )
-}
-
-function Notes({ meta, notes, onRetry, onBack, onClear }) {
-  return (
-    <section className="ev-card">
-      <div className="ev-card-head ev-card-head-row">
-        <div>
-          <h1 className="ev-h2">오답노트</h1>
-          <p className="ev-muted">틀린 문제가 모여요. 다시 맞히면 빠져요. (이 브라우저에만 저장)</p>
-        </div>
-        {notes.length > 0 && (
-          <Button size="sm" onClick={onRetry}>
-            모아서 다시 풀기
-          </Button>
-        )}
-      </div>
-      {notes.length === 0 ? <p className="ev-muted ev-pad-x ev-pad-b">틀린 문제가 없어요. 퀴즈를 풀어 보세요!</p> : <NoteList meta={meta} items={notes} />}
-      <div className="ev-row ev-pad-x ev-pad-b">
-        <Button variant="ghost" size="sm" onClick={onBack}>
-          처음으로
-        </Button>
-        {notes.length > 0 && (
-          <Button variant="ghost" size="sm" onClick={onClear}>
-            전부 지우기
-          </Button>
-        )}
-      </div>
-    </section>
   )
 }
