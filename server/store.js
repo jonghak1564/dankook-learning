@@ -17,7 +17,19 @@ function load() {
     const have = new Set(cache.questions.map((q) => q.id))
     const removed = new Set(cache.removedSeeds ?? [])
     const missing = SEED_QUESTIONS.filter((q) => !have.has(q.id) && !removed.has(q.id))
-    if (missing.length) {
+    // seed.js에서 고친 처음 문제는 따라 바꾼다. 단, 관리 페이지에서 손댄 것(updatedAt이 다름)은 그대로 둔다
+    let changed = 0
+    for (const seed of SEED_QUESTIONS) {
+      const i = cache.questions.findIndex((q) => q.id === seed.id)
+      if (i < 0) continue
+      const cur = cache.questions[i]
+      if (cur.updatedAt !== seed.updatedAt || cur.status !== seed.status) continue
+      if (JSON.stringify(cur) !== JSON.stringify(seed)) {
+        cache.questions[i] = { ...seed }
+        changed += 1
+      }
+    }
+    if (missing.length || changed) {
       cache.questions.push(...missing.map((q) => ({ ...q })))
       save()
     }
