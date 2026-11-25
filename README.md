@@ -47,9 +47,10 @@ server/llm/           AI 호출(client.js) · 지시문(prompts.js)
 | :-- | :-- |
 | `GET /api/health` | AI · 관리자 설정 · 공개 문제 수 |
 | `GET /api/meta` | 난이도 · 분야 이름, 분야별 문제 수 |
-| `GET /api/quiz?level=&category=` | 퀴즈 10문제 |
-| `POST /api/qualify` | 재학생 버전 답 → 다시 채점, 80점 이상이면 출제 자격 표 |
-| `POST /api/questions` | 문제 올리기 (출제 자격 표 필요) → 검수 대기 |
+| `GET /api/quiz?level=&category=` | 퀴즈 10문제 + 세션 (정답 · 해설은 안 보냄) |
+| `POST /api/answer` | 한 문제 채점 (첫 답만 기록) → 정답 · 해설 · 출처 |
+| `POST /api/qualify` | 세션 기록으로 판정, 재학생 80점 이상이면 출제 자격 표 (7일) |
+| `POST /api/questions` | 문제 올리기 (출제 자격 표 필요, 1시간 5개) → 검수 대기 |
 | `POST /api/admin/login` | 관리자 로그인 |
 | `GET/POST/DELETE /api/admin/questions` | 문제 목록 · 직접 추가 · 삭제 |
 | `POST /api/admin/review` | 승인 · 고쳐서 승인 · 반려 |

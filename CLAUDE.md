@@ -18,10 +18,20 @@
 
 ## 실행
 
-- 공용 서버 계정 user05 → **포트 3005** (`PORT` 환경 변수). `npm run dev` 또는 `npm run serve`
+- 공용 서버 계정 user05 → **포트 3005** (`PORT` 환경 변수). `npm run serve -- --host ::` (IPv4 · IPv6 localhost 둘 다 받기 위해. 내부망 접속은 vite.config.js가 막음)
 - `.env.local`은 `.env.example`을 복사해 만든다. 바꾼 뒤에는 서버를 다시 켜야 반영된다 (`npm run serve`로 켰으면 `POST /api/restart`)
 - 상태 확인: `curl -s localhost:3005/api/health` (AI 설정 · 연결, 관리자 비밀번호 설정 여부, 공개 문제 수)
 - 다른 계정(팀원)의 프로세스 · 팀프로젝트 폴더는 건드리지 않는다
+
+## 보안 (11/25 점검 후 적용 — 바꿀 때 지킬 것)
+
+- **정답은 화면에 미리 보내지 않는다.** `GET /api/quiz`는 문제 · 보기만, 채점은 `POST /api/answer`(서버 세션 `server/sessions.js`, 첫 답만 기록), 출제 자격은 `POST /api/qualify`가 세션 기록으로만 판정
+- 출제 자격 표는 서버 서명 + **7일 유효**, 문제 올리기는 표 1개당 1시간 5개 · 검수 대기 200개 상한 (`server/questions.js`)
+- `vite.config.js` 입구에서: **localhost 접속만 허용**(VS Code 포트 전달은 localhost로 들어옴, `ALLOW_NETWORK=1`이면 내부망 허용), `/data` `/server` `/scripts` `/docs` · 루트 `.md/.json` · `.env*` 주소 차단, 보안 헤더
+- 관리자 로그인 실패 잠금은 접속 주소별 (5회 → 1분)
+- `.env.local`은 권한 600, git 제외. 값을 채팅 · 문서 · 로그에 출력하지 않는다
+- 새 폴더 · 파일을 루트에 만들면 `vite.config.js`의 `BLOCKED`에 넣을지 확인한다
+- npm audit의 남은 경고 4개는 Storybook(개발 도구) 내부 — 앱에는 안 들어감
 
 ## 변경 작업 원칙 (팀프로젝트에서 이어 옴)
 

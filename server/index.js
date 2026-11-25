@@ -7,6 +7,7 @@ import { chatJson, llmInfo, pingModel } from './llm/client.js'
 import { buildCheckMessages, buildDraftMessages, CHECK_SCHEMA, DRAFT_SCHEMA } from './llm/prompts.js'
 import {
   CATEGORIES,
+  checkSubmitLimit,
   gradeOf,
   issueQualification,
   LEVELS,
@@ -17,6 +18,7 @@ import {
   ruleCheck,
   verifyQualification,
 } from './questions.js'
+import { answer, createSession, finishSession, hideAnswer } from './sessions.js'
 import { addQuestions, allQuestions, getQuestion, removeQuestion, updateQuestion } from './store.js'
 
 const STARTED_AT = new Date().toISOString()
@@ -108,22 +110,33 @@ const routes = {
     const category = url.searchParams.get('category') ?? 'all'
     if (!(level in LEVELS)) throw bad('난이도를 골라 주세요.')
     if (category !== 'all' && !(category in CATEGORIES)) throw bad('없는 분야예요.')
-    return { questions: pickQuiz(allQuestions(), { level, category }) }
+    // 정답은 서버 세션에만 두고, 화면에는 문제와 보기만 보낸다 (보안 점검 11/25)
+    const questions = pickQuiz(allQuestions(), { level, category })
+    const sessionId = createSession({ level, category, questions })
+    return { sessionId, questions: questions.map(hideAnswer) }
   },
 
-  // 재학생 버전 결과 → 등급, 80점 이상이면 출제 자격 표
+  // 한 문제 채점: 처음 고른 답만 기록하고 정답 · 해설 · 출처를 돌려준다
+  'POST /api/answer': async (req) => {
+    const { sessionId, id, choice } = await readJson(req)
+    return answer(sessionId, id, choice)
+  },
+
+  // 재학생 버전 결과 → 서버가 기록한 첫 답으로만 판정, 80점 이상이면 출제 자격 표 (7일)
   'POST /api/qualify': async (req) => {
-    const { answers } = await readJson(req)
-    if (!Array.isArray(answers)) throw bad('answers가 필요해요.')
-    const { token, percent } = issueQualification(allQuestions(), answers)
-    return { token, percent, grade: gradeOf(percent) }
+    const { sessionId } = await readJson(req)
+    const result = finishSession(sessionId)
+    const totalSenior = allQuestions().filter((q) => q.status === 'approved' && q.level === 'senior').length
+    const { token, percent, exp } = issueQualification(result, totalSenior)
+    return { token, percent, exp, grade: gradeOf(percent) }
   },
 
-  // 재학생 문제 올리기 → 대기
+  // 재학생 문제 올리기 → 대기 (자격 표 1개당 1시간 5개, 대기 200개 넘으면 잠시 막음)
   'POST /api/questions': async (req) => {
     const body = await readJson(req)
-    verifyQualification(body.token)
+    const qual = verifyQualification(body.token)
     const q = normalizeQuestion(body)
+    checkSubmitLimit(qual.key, allQuestions().filter((x) => x.status === 'pending').length)
     const check = await checkSubmission(q)
     const [saved] = addQuestions([{ ...q, origin: 'student', status: 'pending', check }])
     return { id: saved.id, status: saved.status }
@@ -132,7 +145,7 @@ const routes = {
   // ── 관리자 ──
   'POST /api/admin/login': async (req) => {
     const { password } = await readJson(req)
-    return { token: login(password) }
+    return { token: login(password, req.socket.remoteAddress) }
   },
 
   'GET /api/admin/questions': async (req, url) => {

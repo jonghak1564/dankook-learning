@@ -16,17 +16,24 @@ async function request(method, path, body, headers = {}) {
 }
 
 export const fetchMeta = () => request('GET', '/api/meta')
-export const fetchQuiz = (level, category) =>
-  request('GET', `/api/quiz?level=${level}&category=${category}`).then((d) => d.questions)
+// 퀴즈 받기: { sessionId, questions } — 정답은 안 온다. 고를 때마다 answerApi로 서버가 채점
+export const fetchQuiz = (level, category) => request('GET', `/api/quiz?level=${level}&category=${category}`)
+export const answerApi = (sessionId, id, choice) => request('POST', '/api/answer', { sessionId, id, choice })
 export const fetchRecent = () => request('GET', '/api/recent').then((d) => d.questions)
-export const qualifyApi = (answers) => request('POST', '/api/qualify', { answers })
+export const qualifyApi = (sessionId) => request('POST', '/api/qualify', { sessionId })
 export const submitQuestionApi = (question, token) => request('POST', '/api/questions', { ...question, token })
 
 // 출제 자격 표: 이 브라우저에만 저장 (로그인 대신)
 const QUAL_KEY = 'dk-qualification'
 export function loadQualification() {
   try {
-    return JSON.parse(localStorage.getItem(QUAL_KEY)) ?? null
+    const q = JSON.parse(localStorage.getItem(QUAL_KEY))
+    // 유효기간(7일)이 없거나 지난 표는 지운다 (서버도 거절함)
+    if (!q?.exp || q.exp < Date.now()) {
+      localStorage.removeItem(QUAL_KEY)
+      return null
+    }
+    return q
   } catch {
     return null
   }

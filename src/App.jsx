@@ -2,6 +2,7 @@
 // 분야별 풀기 · 오답노트 · 문제 올리기는 시작 화면의 작은 링크와 결과 화면 버튼으로 (01 PRD Q5 ①②)
 import { useEffect, useState } from 'react'
 import {
+  answerApi,
   fetchMeta,
   fetchQuiz,
   fetchRecent,
@@ -66,20 +67,22 @@ export default function App() {
   async function start(level, category = 'all', questions = null) {
     setError('')
     try {
-      const list = questions ?? (await fetchQuiz(level, category))
-      if (!list.length) {
+      // 다시 풀기 · 오답노트는 이미 정답을 본 문제라 화면에서 채점(local), 새 퀴즈는 서버가 채점
+      const data = questions ? { sessionId: null, questions } : await fetchQuiz(level, category)
+      if (!data.questions.length) {
         setError('아직 공개된 문제가 없어요.')
         return
       }
-      setRound({ level, category, questions: list, answers: [], retry: Boolean(questions) })
+      setRound({ level, category, sessionId: data.sessionId, questions: data.questions, answers: [], retry: Boolean(questions) })
       go('quiz')
     } catch (e) {
       setError(e.message)
     }
   }
 
-  async function finish(answers) {
-    const done = { ...round, answers }
+  // revealed: 정답 · 해설까지 받은 문제 목록 (서버 채점 결과를 합친 것)
+  async function finish(answers, revealed) {
+    const done = { ...round, questions: revealed, answers }
     setRound(done)
     go('result')
     const percent = scoreOf(done)
@@ -105,8 +108,9 @@ export default function App() {
     // 재학생 버전을 처음부터 끝까지 풀고 80점 이상이면 서버가 다시 채점해 출제 자격을 준다
     if (done.level === 'senior' && !done.retry && percent >= meta.qualifyScore) {
       try {
-        const res = await qualifyApi(done.questions.map((q, i) => ({ id: q.id, choice: q.choices[answers[i]] })))
-        const q = { token: res.token, percent: res.percent }
+        // 서버가 기록한 첫 답으로만 판정한다 (화면 점수는 참고용)
+        const res = await qualifyApi(done.sessionId)
+        const q = { token: res.token, percent: res.percent, exp: res.exp }
         saveQualification(q)
         setQual(q)
       } catch (e) {
@@ -317,16 +321,38 @@ function Categories({ meta, onPick, onBack }) {
 function Quiz({ meta, round, onFinish, onQuit }) {
   const [index, setIndex] = useState(0)
   const [answers, setAnswers] = useState([])
-  const q = round.questions[index]
+  const [revealed, setRevealed] = useState([]) // 정답 · 해설을 받은 문제
+  const [checking, setChecking] = useState(false)
+  const [error, setError] = useState('')
+  const base = round.questions[index]
+  const q = revealed[index] ?? base
   const picked = answers[index]
-  const done = picked !== undefined
+  const done = picked !== undefined && revealed[index] !== undefined
   const last = index === round.questions.length - 1
 
-  function pick(i) {
-    if (done) return
-    const next = [...answers]
-    next[index] = i
-    setAnswers(next)
+  async function pick(i) {
+    if (done || checking) return
+    setError('')
+    let full = base
+    if (round.sessionId) {
+      setChecking(true)
+      try {
+        const r = await answerApi(round.sessionId, base.id, i)
+        full = { ...base, answer: r.answer, explanation: r.explanation, source: r.source, author: r.author, origin: r.origin }
+        i = r.picked // 서버가 기록한 첫 답
+      } catch (e) {
+        setError(e.message)
+        setChecking(false)
+        return
+      }
+      setChecking(false)
+    }
+    const nextAnswers = [...answers]
+    nextAnswers[index] = i
+    const nextRevealed = [...revealed]
+    nextRevealed[index] = full
+    setAnswers(nextAnswers)
+    setRevealed(nextRevealed)
   }
 
   return (
@@ -354,13 +380,14 @@ function Quiz({ meta, round, onFinish, onQuit }) {
         {q.choices.map((c, i) => {
           const state = !done ? '' : i === q.answer ? 'correct' : i === picked ? 'wrong' : 'dim'
           return (
-            <button key={i} type="button" className={`mb-choice ${state}`} onClick={() => pick(i)} disabled={done} aria-pressed={picked === i}>
+            <button key={i} type="button" className={`mb-choice ${state}`} onClick={() => pick(i)} disabled={done || checking} aria-pressed={picked === i}>
               {c}
             </button>
           )
         })}
       </div>
 
+      {error && <Alert tone="warning">{error}</Alert>}
       {done && (
         <div className="mb-explain" role="status">
           <p className={picked === q.answer ? 'mb-verdict ok' : 'mb-verdict no'}>{picked === q.answer ? '정답!' : `아쉬워요. 정답은 「${q.choices[q.answer]}」`}</p>
@@ -368,7 +395,7 @@ function Quiz({ meta, round, onFinish, onQuit }) {
           <p className="ev-meta">
             출처 · {q.source} · 출제 {q.origin === 'ai' ? 'AI 초안 (관리자 검수)' : q.author}
           </p>
-          <Button size="lg" onClick={() => (last ? onFinish(answers) : setIndex(index + 1))}>
+          <Button size="lg" onClick={() => (last ? onFinish(answers, revealed) : setIndex(index + 1))}>
             {last ? '결과 보기' : '다음 문제'}
           </Button>
         </div>

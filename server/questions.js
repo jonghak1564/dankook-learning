@@ -1,6 +1,6 @@
 // 문제 규칙: 분야 · 난이도 · 입력 확인 · 금지어 · 비슷한 문제 · 출제 자격
 // 규칙으로 할 수 있는 일은 여기서 AI 없이 처리한다 (CLAUDE.md 변경 작업 원칙 1)
-import { createHmac, randomBytes } from 'node:crypto'
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto'
 
 export const LEVELS = { newbie: '신·편입생', senior: '재학생' }
 export const CATEGORIES = {
@@ -87,7 +87,7 @@ export function pickQuiz(questions, { level, category }) {
     const j = Math.floor(Math.random() * (i + 1))
     ;[pool[i], pool[j]] = [pool[j], pool[i]]
   }
-  return pool.slice(0, QUIZ_SIZE).map((q) => shuffleChoices(publicView(q)))
+  return pool.slice(0, QUIZ_SIZE).map((q) => shuffleChoices(publicView(q))) // 정답 포함 — 서버 세션에만 두고 화면엔 hideAnswer()로
 }
 
 // 4지선다는 보기 순서를 매번 섞는다 (정답이 늘 1번이면 찍어서 고인물이 된다). O/X는 그대로
@@ -115,34 +115,62 @@ export function gradeOf(percent) {
   return '뉴비'
 }
 
-// 출제 자격 표: 재학생 버전 80점 이상을 서버가 다시 채점해 확인한 뒤 서명해 준다.
-// 로그인 대신 브라우저에 저장한다 (01 PRD). 서버를 다시 켜면 APP_SECRET이 없을 때 표가 무효가 된다
+// 출제 자격 표: 재학생 버전을 서버 세션에서 80점 이상 받은 경우에만 서명해 준다 (server/sessions.js)
+// 로그인 대신 브라우저에 저장한다 (01 PRD). 7일 지나면 다시 받아야 한다
+// APP_SECRET이 없으면 서버를 다시 켤 때 이전 표가 무효가 된다
 const SECRET = process.env.APP_SECRET || randomBytes(32).toString('hex')
+const TOKEN_DAYS = 7
 const sign = (body) => createHmac('sha256', SECRET).update(body).digest('base64url')
 
-export function issueQualification(questions, answers) {
-  const graded = answers
-    .map(({ id, choice }) => ({ q: questions.find((x) => x.id === id), choice }))
-    .filter(({ q }) => q && q.status === 'approved' && q.level === 'senior')
-  const ids = new Set(graded.map(({ q }) => q.id))
-  if (ids.size !== graded.length) throw Object.assign(new Error('같은 문제가 두 번 들어 있어요.'), { status: 400 })
-  const minCount = Math.min(QUIZ_SIZE, questions.filter((q) => q.status === 'approved' && q.level === 'senior').length)
-  if (graded.length === 0 || graded.length < minCount) {
-    throw Object.assign(new Error('재학생 버전을 끝까지 풀어야 해요.'), { status: 400 })
+// result: finishSession() 결과 { level, count, percent }
+export function issueQualification(result, totalSenior) {
+  if (result.level !== 'senior') throw Object.assign(new Error('재학생 버전을 풀어야 해요.'), { status: 400 })
+  if (result.count < Math.min(QUIZ_SIZE, totalSenior)) {
+    throw Object.assign(new Error('재학생 버전 전체 문제로 풀어야 해요.'), { status: 400 })
   }
-  // 보기 순서가 섞여 나가므로 번호가 아니라 고른 보기 글자로 채점한다
-  const correct = graded.filter(({ q, choice }) => q.choices[q.answer] === choice).length
-  const percent = Math.round((correct / graded.length) * 100)
-  if (percent < QUALIFY_SCORE) {
-    throw Object.assign(new Error(`${QUALIFY_SCORE}점 이상이어야 출제 자격이 생겨요. (지금 ${percent}점)`), { status: 403 })
+  if (result.percent < QUALIFY_SCORE) {
+    throw Object.assign(new Error(`${QUALIFY_SCORE}점 이상이어야 출제 자격이 생겨요. (지금 ${result.percent}점)`), { status: 403 })
   }
-  const body = Buffer.from(JSON.stringify({ percent, at: Date.now() })).toString('base64url')
-  return { token: `${body}.${sign(body)}`, percent }
+  const exp = Date.now() + TOKEN_DAYS * 24 * 60 * 60 * 1000
+  const body = Buffer.from(JSON.stringify({ percent: result.percent, exp, n: randomBytes(6).toString('hex') })).toString('base64url')
+  return { token: `${body}.${sign(body)}`, percent: result.percent, exp }
 }
 
+// 맞으면 표 안의 정보를 돌려준다. 서명이 틀리거나 기간이 지나면 403
 export function verifyQualification(token) {
   const [body, mac] = String(token ?? '').split('.')
-  if (!body || !mac || sign(body) !== mac) {
-    throw Object.assign(new Error('출제 자격이 없어요. 재학생 버전에서 80점 이상을 받아 주세요.'), { status: 403 })
+  const bad = (msg) => Object.assign(new Error(msg), { status: 403 })
+  if (!body || !mac) throw bad('출제 자격이 없어요. 재학생 버전에서 80점 이상을 받아 주세요.')
+  const expected = Buffer.from(sign(body))
+  const given = Buffer.from(mac)
+  if (expected.length !== given.length || !timingSafeEqual(expected, given)) {
+    throw bad('출제 자격이 없어요. 재학생 버전에서 80점 이상을 받아 주세요.')
   }
+  let data
+  try {
+    data = JSON.parse(Buffer.from(body, 'base64url').toString())
+  } catch {
+    throw bad('출제 자격 표가 깨졌어요. 다시 받아 주세요.')
+  }
+  if (!data.exp || data.exp < Date.now()) throw bad('출제 자격이 만료됐어요(7일). 재학생 버전을 다시 풀어 주세요.')
+  return { key: mac, ...data }
+}
+
+// 문제 올리기 횟수 제한: 자격 표 하나당 1시간에 5개, 검수 대기가 200개 넘으면 잠시 막는다
+const SUBMIT_PER_HOUR = 5
+const MAX_PENDING = 200
+const submitLog = new Map() // 표 서명 → 올린 시각들
+
+export function checkSubmitLimit(key, pendingCount) {
+  if (pendingCount >= MAX_PENDING) {
+    throw Object.assign(new Error('검수 대기 문제가 많아 잠시 올릴 수 없어요. 나중에 다시 해 주세요.'), { status: 429 })
+  }
+  const now = Date.now()
+  const recent = (submitLog.get(key) ?? []).filter((t) => now - t < 60 * 60 * 1000)
+  if (recent.length >= SUBMIT_PER_HOUR) {
+    throw Object.assign(new Error(`한 시간에 ${SUBMIT_PER_HOUR}개까지 올릴 수 있어요. 조금 뒤에 다시 해 주세요.`), { status: 429 })
+  }
+  recent.push(now)
+  submitLog.set(key, recent)
+  if (submitLog.size > 10000) submitLog.delete(submitLog.keys().next().value)
 }
