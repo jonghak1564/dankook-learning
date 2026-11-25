@@ -37,6 +37,20 @@ const LIFE = {
   lounge: `단국대 공식 웹진 2026-04-03 (webzine.dankook.ac.kr/news/articleView.html?idxno=964, ${CHECKED2})`,
   gate: `[2차] 아이뉴스24 2026-11-11 (inews24.com/view/2025244, ${CHECKED2})`,
 }
+// GPT 조사 (docs/farm/gpt_1125.md, 11/25 기획자 검토 후 추가). 출처는 GPT가 적어 온 페이지
+const GPT = {
+  facility: `단국대 홈페이지 > 천안 복지시설 (dankook.ac.kr/-526, ${CHECKED2}, GPT 조사, 바뀔 수 있음)`,
+  cheonan: `단국대 홈페이지 > 천안캠퍼스 학생지원 부서 (dankook.ac.kr/ko/-512, ${CHECKED2}, GPT 조사)`,
+  shuttle: `단국대 홈페이지 > 셔틀버스 (dankook.ac.kr/ko/web/kor/-334, ${CHECKED2}, GPT 조사)`,
+  card: `단국대 홈페이지 > 모바일 학생증 (dankook.ac.kr/web/kor/-469, ${CHECKED2}, GPT 조사)`,
+  support: `단국대 장애학생지원센터 > 센터 안내 (cms.dankook.ac.kr/ko/web/supportcenter/introduce, ${CHECKED2}, GPT 조사)`,
+  breakfast: `단국대 DKU Today > 천원의 아침밥 사업 (cms.dankook.ac.kr/web/kor/dku-today, ${CHECKED2}, GPT 조사 · 현재 운영은 재학생 확인)`,
+  symbol: `단국대 홈페이지 > 교기 · 상징물 (dankook.ac.kr/-36, ${CHECKED2}, GPT 조사)`,
+  museum: `단국역사관 > 이달의 기록물 2024-11 「천안캠퍼스의 시작」 (cms.dankook.ac.kr/web/historymuseum, ${CHECKED2}, GPT 조사)`,
+  report: `단국대 2017 대학기관평가인증 자체진단평가보고서 14쪽 (dankook.ac.kr, ${CHECKED2}, GPT 조사)`,
+  rule56: `학칙 시행세칙 제56조 제2항 (rule.dankook.ac.kr, ${CHECKED2}, GPT 조사)`,
+}
+const gpt = (q) => ({ ...q, origin: 'gpt', author: 'GPT 조사' })
 
 const AT = '2026-11-23T00:00:00.000Z'
 const base = { origin: 'seed', status: 'approved', author: '단국러닝', createdAt: AT, updatedAt: AT }
@@ -161,4 +175,18 @@ export const SEED_QUESTIONS = [
   pick('seed-s27', 'senior', 'etc', '단국대의 인재상은?', ['능동 · 혁신 · 헌신의 D3 인재', '창의 · 융합 · 소통의 C3 인재', '도전 · 창조 · 글로벌의 G3 인재', '진리 · 봉사 · 협력의 S3 인재'], 0, '인재상은 「능동 · 혁신 · 헌신의 D3 인재」예요.', LIFE.talent),
   pick('seed-s28', 'senior', 'etc', '단국대 심벌마크가 형상화한 것은?', ['DKU를 중심으로 회전하는 빛', '검은 곰 얼굴', '펼친 책', '단군 초상'], 0, '심벌마크는 영문 이니셜 DKU를 중심으로 역동적으로 회전하는 빛을 상징화했어요.', LIFE.ui),
   pick('seed-s29', 'senior', 'etc', '천안캠퍼스 설립 50주년이 되는 해는?', ['2028년', '2027년', '2030년', '2025년'], 0, '천안캠퍼스는 1978년에 세워져 2028년이 50주년이에요. (2027년은 단국대 개교 80주년)', LIFE.gate),
+  // ── 11/25 추가: GPT 조사 (중복 5개 · 확인 안 된 편입 학점 2개 제외) ──
+  gpt(pick('seed-g1', 'newbie', 'food', '인문과학관의 교내 편의점은 몇 층에 있을까?', ['지하층', '2층', '3층', '4층'], 0, '인문과학관 편의점은 지하에 있어요. (입점 가게는 바뀔 수 있어요)', GPT.facility)),
+  gpt(ox('seed-g2', 'newbie', 'transport', '셔틀버스는 만차여도 예정된 출발 시각까지 기다렸다가 출발한다?', false, '만차면 정해진 시간보다 먼저 출발할 수 있어요. 승차장에 여유 있게 가세요!', GPT.shuttle)),
+  gpt(ox('seed-g3', 'newbie', 'campus', '모바일 학생증은 안드로이드와 iOS 스마트폰 모두에서 쓸 수 있다?', true, '안드로이드 · iOS 스마트폰 모두 모바일 학생증을 쓸 수 있어요.', GPT.card)),
+  gpt(pick('seed-g4', 'newbie', 'campus', '천안캠퍼스 장애학생지원센터는 어느 건물에 있을까?', ['학생회관', '공학관', '인문과학관', '체육관'], 0, '장애학생지원센터는 학생회관 206-1호에 있어요.', GPT.support)),
+  gpt(pick('seed-g5', 'newbie', 'food', '천원의 아침밥 사업의 목적은?', ['건강한 식습관 형성과 국산 쌀 소비 촉진', '외국산 쌀 소비 확대', '학생 저녁 식사 확대', '대학원 연구비 지원'], 0, '청년층의 건강한 식습관 형성과 국산 쌀 소비 촉진을 위한 사업이에요. 천안캠퍼스에서도 운영하고 있어요.', GPT.breakfast)),
+  gpt(pick('seed-g6', 'senior', 'food', '미술용품을 파는 교내 화방은 어디에 있을까?', ['예술관 A동 지하', '공학관 2층', '사회과학관 3층', '약학관 2층'], 0, '화방은 예술관 A동 지하에 있어요. (입점 가게는 바뀔 수 있어요)', GPT.facility)),
+  gpt(pick('seed-g7', 'senior', 'food', '율곡기념도서관 안 복사점은 어디에 있을까?', ['지하와 3층', '1층과 2층', '2층과 4층', '3층과 4층'], 0, '도서관 복사시설은 지하와 3층에 있어요.', GPT.facility)),
+  gpt(pick('seed-g8', 'senior', 'campus', '율곡기념도서관의 자동심장충격기(AED)는 어디에 있을까?', ['1층 경비실 앞', '지하 복사점 앞', '2층 열람실 앞', '4층 계단 앞'], 0, '율곡기념도서관 AED는 1층 경비실 앞에 있어요. 위치를 알아 두면 위급할 때 도움이 돼요.', GPT.facility)),
+  gpt(pick('seed-g9', 'senior', 'campus', '율곡기념도서관에서 하는 서비스는?', ['상호대차 및 원문복사', '예비군 훈련 신청', '등록금 수납', '생활관 입사 심사'], 0, '도서관은 다른 도서관 자료를 빌려 보는 상호대차와 원문복사 서비스를 해요.', GPT.cheonan)),
+  gpt(pick('seed-g10', 'senior', 'etc', '단국대 교기에 담긴 사상은 무엇과 일치할까?', ['태극기', '무궁화', '한반도 지도', '애국가'], 0, '교기는 국기인 태극기의 사상과 일치해요.', GPT.symbol)),
+  gpt(pick('seed-g11', 'senior', 'etc', '천안캠퍼스 개교 당시 「산업학관」이라 불린 건물의 지금 이름은?', ['자연과학1관', '공학관', '사회과학관', '인문과학관'], 0, '옛 산업학관이 지금의 자연과학1관이에요.', GPT.museum)),
+  gpt(pick('seed-g12', 'senior', 'etc', '2014년 죽전 · 천안캠퍼스가 바뀐 운영 체제는?', ['단일교지(원 캠퍼스) 체제', '독립대학 체제', '전문대학 체제', '사이버대학 체제'], 0, '2014년 두 캠퍼스가 단일교지(원 캠퍼스) 체제로 바뀌었어요.', GPT.report)),
+  gpt(ox('seed-g13', 'senior', 'academic', '편입생이 전 대학에서 인정받은 졸업인증 실적이 단국대 기준 이상이면 인정받을 수 있다?', true, '전적대학에서 인정받은 실적 · 점수가 단국대 기준 이상이면 인정할 수 있어요.', GPT.rule56)),
 ]
