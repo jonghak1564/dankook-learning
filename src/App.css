@@ -40,15 +40,6 @@ body {
   gap: 10px;
 }
 
-.ev-pad-x {
-  padding-left: 16px;
-  padding-right: 16px;
-}
-
-.ev-pad-b {
-  padding-bottom: 14px;
-}
-
 .ev-center {
   text-align: center;
   justify-items: center;
@@ -90,19 +81,13 @@ body {
   font-size: var(--fs-sm);
 }
 
-.ev-hot,
 .ev-chip-accent {
-  padding: 1px 6px;
+  padding: 3px 8px;
   border-radius: 4px;
   background: var(--ev-accent);
   color: #fff;
-  font-size: 11px;
-  font-weight: 800;
-}
-
-.ev-chip-accent {
-  padding: 3px 8px;
   font-size: var(--fs-xs);
+  font-weight: 800;
 }
 
 .ev-row {
@@ -110,10 +95,6 @@ body {
   flex-wrap: wrap;
   gap: 8px;
   align-items: center;
-}
-
-.ev-row-end {
-  justify-content: flex-end;
 }
 
 .ev-row-center {

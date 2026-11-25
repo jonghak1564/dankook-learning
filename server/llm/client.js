@@ -95,11 +95,6 @@ async function callChat({ messages, schema, schemaName, timeoutMs }) {
   return { content: data.choices?.[0]?.message?.content ?? '', model }
 }
 
-// 질문을 보내고 글로 받는다
-export function chatText({ messages, timeoutMs = TIMEOUT_MS }) {
-  return enqueue(() => callChat({ messages, timeoutMs }))
-}
-
 // 질문을 보내고 JSON으로 받는다 (schema: JSON Schema)
 export function chatJson({ messages, schema, schemaName = 'result', timeoutMs = TIMEOUT_MS }) {
   return enqueue(async () => {

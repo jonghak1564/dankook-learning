@@ -1,10 +1,22 @@
+import { networkInterfaces } from 'node:os'
 import react from '@vitejs/plugin-react'
 import { defineConfig, loadEnv } from 'vite'
 
 // ── 보안 (11/25 점검) ──
-// 1) 이 컴퓨터 안(localhost)에서 온 접속만 받는다. VS Code 포트 전달도 localhost로 들어온다.
-//    학원 내부망의 다른 컴퓨터에서 직접 들어오는 것은 막는다 (ALLOW_NETWORK=1이면 허용)
-const LOOPBACK = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+// 1) 이 서버 자기 자신에서 온 접속만 받는다 (localhost + 이 서버의 네트워크 주소).
+//    VS Code 포트 전달은 이 서버의 내부망 주소(예: 10.0.0.222)로 들어오기도 해서 그 주소도 허용한다 (11/25 확인).
+//    학원 내부망의 「다른」 컴퓨터에서 직접 들어오는 것은 막는다 (ALLOW_NETWORK=1이면 허용)
+function selfAddresses() {
+  const set = new Set(['127.0.0.1', '::1', '::ffff:127.0.0.1'])
+  for (const list of Object.values(networkInterfaces())) {
+    for (const a of list ?? []) {
+      set.add(a.address)
+      if (a.family === 'IPv4') set.add(`::ffff:${a.address}`)
+    }
+  }
+  return set
+}
+const SELF = selfAddresses()
 // 2) 화면에 필요 없는 파일은 주소로 열 수 없게 막는다: 문제 데이터(정답 · 검수 대기), 서버 코드, 문서, 설정
 const BLOCKED = [
   /^\/(data|server|scripts|docs|\.claude|\.storybook|\.git|dist)(\/|$)/,
@@ -45,7 +57,8 @@ function appApi() {
       const root = server.config.root.replace(/\\/g, '/')
       server.middlewares.use((req, res, next) => {
         for (const [k, v] of Object.entries(HEADERS)) res.setHeader(k, v)
-        if (process.env.ALLOW_NETWORK !== '1' && !LOOPBACK.has(req.socket.remoteAddress)) {
+        if (process.env.ALLOW_NETWORK !== '1' && !SELF.has(req.socket.remoteAddress)) {
+          console.warn(`[보안] 외부 접속 차단: ${req.socket.remoteAddress} ${req.method} ${req.url}`)
           res.writeHead(403, { 'Content-Type': 'text/plain; charset=utf-8' })
           return res.end('이 컴퓨터 밖에서는 접속할 수 없어요. VS Code 포트 전달로 접속해 주세요.')
         }
