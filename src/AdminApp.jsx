@@ -16,7 +16,7 @@ import QuestionForm from './QuestionForm.jsx'
 import { Alert, Badge, Button, Pills, Segmented, StatTile, Tabs, TextField } from './ui/index.jsx'
 import './App.css'
 
-const ORIGIN = { seed: '처음 문제', student: '재학생', ai: 'AI 초안', admin: '관리자' }
+const ORIGIN = { seed: '처음 문제', student: '재학생', ai: 'AI 초안', admin: '관리자', gpt: 'GPT 조사' }
 const STATUS = { pending: '대기', approved: '공개', rejected: '반려' }
 
 export default function AdminApp() {
@@ -264,7 +264,7 @@ function ReviewCard({ q, meta, guard, onDone }) {
   return (
     <article className="panel review">
       <div className="review-tags">
-        <Badge tone={q.origin === 'ai' ? 'accent' : 'neutral'}>{ORIGIN[q.origin] ?? q.origin}</Badge>
+        <Badge tone={q.origin === 'ai' || q.origin === 'gpt' ? 'accent' : 'neutral'}>{ORIGIN[q.origin] ?? q.origin}</Badge>
         <Badge>{meta.levels[q.level]}</Badge>
         <Badge>{meta.categories[q.category]}</Badge>
         <span className="muted">{q.author}</span>
@@ -284,7 +284,7 @@ function ReviewCard({ q, meta, guard, onDone }) {
       <p className="muted">출처 · {q.source}</p>
       {q.evidence && (
         <blockquote className="evidence">
-          <span className="muted">AI가 든 근거 문장</span>
+          <span className="muted">{q.origin === 'gpt' ? 'GPT가 적어 온 출처 문장' : 'AI가 든 근거 문장'}</span>
           <br />
           {q.evidence}
         </blockquote>

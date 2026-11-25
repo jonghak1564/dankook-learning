@@ -21,7 +21,10 @@ npm install
 cp .env.example .env.local   # ADMIN_PASSWORD, OPENROUTER_API_KEY, OPENROUTER_MODEL 채우기
 npm run serve                # http://<서버주소>:3005  (관리: /admin)
 npm run lint && npm run build
+npm run import-questions -- docs/farm/gpt_1125.md   # GPT가 모은 문제 → 검수 대기 (서버 끈 상태에서)
 ```
+
+GPT로 문제 모으기: [docs/03_gpt_farming_prompt.md](docs/03_gpt_farming_prompt.md)를 복사해 ChatGPT(웹 검색 켜기)에 붙여 넣고, 답을 `docs/farm/`에 저장한 뒤 위 명령으로 넣는다.
 
 AI 설정이 없어도 퀴즈 · 올리기 · 검수는 동작한다 (AI 초안만 안 되고, 점검은 규칙만).
 

@@ -45,5 +45,5 @@
 
 ## 문서
 
-- PRD `docs/01_prd.md` · 와이어프레임 `docs/06_wireframe.md` · 할 일 `docs/07_todo.md` · 실행 방법 `README.md`
+- PRD `docs/01_prd.md` · 벤치마킹 `docs/02_benchmarking.md` · GPT 문제 파밍 지시문 `docs/03_gpt_farming_prompt.md`(결과는 `docs/farm/`, `npm run import-questions`로 검수 대기에 넣음) · 와이어프레임 `docs/06_wireframe.md` · 할 일 `docs/07_todo.md` · 실행 방법 `README.md`
 - 큰 변경 전 버전은 `docs/archive/<이름>_<YYYYMMDD>.md`로 옮긴다.
