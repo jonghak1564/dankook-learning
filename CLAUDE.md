@@ -18,7 +18,7 @@
 
 ## 실행
 
-- 공용 서버 계정 user05 → **포트 3005** (`PORT` 환경 변수). `npm run serve -- --host ::` (IPv4 · IPv6 localhost 둘 다 받기 위해. 내부망 접속은 vite.config.js가 막음)
+- 공용 서버 계정에 배정된 **포트 3005** (`PORT` 환경 변수). `npm run serve -- --host ::` (IPv4 · IPv6 localhost 둘 다 받기 위해. 내부망 접속은 vite.config.js가 막음)
 - `.env.local`은 `.env.example`을 복사해 만든다. 바꾼 뒤에는 서버를 다시 켜야 반영된다 (`npm run serve`로 켰으면 `POST /api/restart`)
 - 상태 확인: `curl -s localhost:3005/api/health` (AI 설정 · 연결, 관리자 비밀번호 설정 여부, 공개 문제 수)
 - 다른 계정(팀원)의 프로세스 · 팀프로젝트 폴더는 건드리지 않는다

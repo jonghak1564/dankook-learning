@@ -4,7 +4,7 @@ import { defineConfig, loadEnv } from 'vite'
 
 // ── 보안 (11/25 점검) ──
 // 1) 이 서버 자기 자신에서 온 접속만 받는다 (localhost + 이 서버의 네트워크 주소).
-//    VS Code 포트 전달은 localhost(127.0.0.1)로 들어온다 (11/25 접속 기록 확인). 서버 자기 주소(예: 10.0.0.222)도
+//    VS Code 포트 전달은 localhost(127.0.0.1)로 들어온다 (11/25 접속 기록 확인). 서버 자기 네트워크 주소도
 //    같은 컴퓨터라 허용해 둔다. 화면이 「제목 없음」 · 로딩만 되면 대개 VS Code 포트 전달이 끊긴 것 → 포트 탭에서 다시 전달.
 //    학원 내부망의 「다른」 컴퓨터에서 직접 들어오는 것은 막는다 (ALLOW_NETWORK=1이면 허용)
 function selfAddresses() {
@@ -83,7 +83,7 @@ export default defineConfig(({ mode }) => {
   return {
     plugins: [react(), appApi()],
     server: {
-      // 공용 서버에서는 계정마다 배정된 PORT를 쓴다 (예: user05 → 3005)
+      // 공용 서버에서는 계정마다 배정된 PORT를 쓴다 (예: 3005)
       port: Number(process.env.PORT ?? 5173),
       strictPort: true,
       // 비밀 파일은 Vite도 열지 않게 (위 BLOCKED와 이중으로)
